@@ -35,6 +35,8 @@ struct Server server_constructor(int domain, int service, int protocol,
         perror("Failed to start listening");
         exit(1);
     }
-
+    
+        
     return server;
+
 }
