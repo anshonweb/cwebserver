@@ -15,7 +15,7 @@
 
 #define BUFFER_SIZE 104857600
 
-// Get the file extension from a file name
+
 const char *get_file_extension(const char *file_name) {
     const char *dot = strrchr(file_name, '.');
     if (!dot || dot == file_name) {
@@ -24,7 +24,7 @@ const char *get_file_extension(const char *file_name) {
     return dot + 1;
 }
 
-// Get the MIME type based on file extension
+//return the mime type
 const char *get_mime_type(const char *file_ext) {
     if (strcasecmp(file_ext, "html") == 0 || strcasecmp(file_ext, "htm") == 0) {
         return "text/html";
@@ -47,7 +47,7 @@ const char *get_mime_type(const char *file_ext) {
     }
 }
 
-// Compare two strings case insensitively
+
 bool case_insensitive_compare(const char *s1, const char *s2) {
     while (*s1 && *s2) {
         if (tolower((unsigned char)*s1) != tolower((unsigned char)*s2)) {
@@ -55,11 +55,11 @@ bool case_insensitive_compare(const char *s1, const char *s2) {
         }
         s1++;
         s2++;
-    }
+    }//cfunction to compare twio strings if they are case sensitive or not
     return *s1 == *s2;
 }
 
-// Find a file name in the current directory, ignoring case
+
 char *get_file_case_insensitive(const char *file_name) {
     DIR *dir = opendir(".");
     if (dir == NULL) {
@@ -80,13 +80,13 @@ char *get_file_case_insensitive(const char *file_name) {
     return found_file_name;
 }
 
-// Decode URL encoded strings
+
 char *url_decode(const char *src) {
     size_t src_len = strlen(src);
     char *decoded = malloc(src_len + 1);
     size_t decoded_len = 0;
 
-    // decode %2x to hex
+    
     for (size_t i = 0; i < src_len; i++) {
         if (src[i] == '%' && i + 2 < src_len) {
             int hex_val;
@@ -94,24 +94,24 @@ char *url_decode(const char *src) {
             decoded[decoded_len++] = hex_val;
             i += 2;
         } else if (src[i] == '+') {
-            // Convert '+' to space
+       
             decoded[decoded_len++] = ' ';
         } else {
             decoded[decoded_len++] = src[i];
         }
     }
 
-    // add null terminator
+
     decoded[decoded_len] = '\0';
     return decoded;
 }
 
-// Build HTTP response based on requested file
+
 void build_http_response(const char *file_name, 
                         const char *file_ext, 
                         char *response, 
                         size_t *response_len) {
-    // build HTTP header
+  
     const char *mime_type = get_mime_type(file_ext);
     char *header = (char *)malloc(BUFFER_SIZE * sizeof(char));
     snprintf(header, BUFFER_SIZE,
@@ -120,10 +120,11 @@ void build_http_response(const char *file_name,
              "\r\n",
              mime_type);
 
-    // Try to find the file with case-insensitive matching
+    
     char *actual_file_name = get_file_case_insensitive(file_name);
     
-    // If file not exist, response is 404 Not Found
+    //404 response
+
     int file_fd;
     if (actual_file_name != NULL) {
         file_fd = open(actual_file_name, O_RDONLY);
@@ -144,17 +145,17 @@ void build_http_response(const char *file_name,
         return;
     }
 
-    // get file size for Content-Length
+
     struct stat file_stat;
     fstat(file_fd, &file_stat);
     off_t file_size = file_stat.st_size;
 
-    // copy header to response buffer
+
     *response_len = 0;
     memcpy(response, header, strlen(header));
     *response_len += strlen(header);
 
-    // copy file to response buffer
+
     ssize_t bytes_read;
     while ((bytes_read = read(file_fd, 
                             response + *response_len, 
@@ -165,7 +166,7 @@ void build_http_response(const char *file_name,
     close(file_fd);
 }
 
-// Handle client request
+
 void handle_client_request(int client_fd) {
     char *buffer = (char *)malloc(BUFFER_SIZE * sizeof(char));
     if (buffer == NULL) {
@@ -174,39 +175,38 @@ void handle_client_request(int client_fd) {
         return;
     }
 
-    // receive request data from client and store into buffer
+
     ssize_t bytes_received = recv(client_fd, buffer, BUFFER_SIZE, 0);
     if (bytes_received > 0) {
-        // Print received request for debugging
+  
         printf("Received request:\n%.*s\n", (int)bytes_received, buffer);
-        buffer[bytes_received] = '\0';  // Ensure null termination
+        buffer[bytes_received] = '\0';  
 
-        // check if request is GET
+
         regex_t regex;
         regcomp(&regex, "^GET /([^ ]*) HTTP/1", REG_EXTENDED);
         regmatch_t matches[2];
 
         if (regexec(&regex, buffer, 2, matches, 0) == 0) {
-            // extract filename from request and decode URL
+          
             buffer[matches[1].rm_eo] = '\0';
             const char *url_encoded_file_name = buffer + matches[1].rm_so;
             char *file_name = url_decode(url_encoded_file_name);
             
             printf("Requested file: '%s'\n", file_name);
 
-            // Default to index.html if root path is requested
             if (strlen(file_name) == 0 || strcmp(file_name, "/") == 0) {
                 free(file_name);
                 file_name = strdup("index.html");
                 printf("Defaulting to index.html\n");
             }
 
-            // get file extension
+           
             char file_ext[32];
             strcpy(file_ext, get_file_extension(file_name));
             printf("File extension: '%s'\n", file_ext);
 
-            // build HTTP response
+            
             char *response = (char *)malloc(BUFFER_SIZE * 2 * sizeof(char));
             if (response == NULL) {
                 perror("Failed to allocate memory for response buffer");
@@ -220,14 +220,14 @@ void handle_client_request(int client_fd) {
             size_t response_len;
             build_http_response(file_name, file_ext, response, &response_len);
 
-            // send HTTP response to client
+
             send(client_fd, response, response_len, 0);
             printf("Response sent: %zu bytes\n", response_len);
 
             free(response);
             free(file_name);
         } else {
-            // Not a GET request or invalid format
+    
             const char *error_response = 
                 "HTTP/1.1 400 Bad Request\r\n"
                 "Content-Type: text/plain\r\n"
